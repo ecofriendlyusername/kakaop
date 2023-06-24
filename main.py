@@ -26,7 +26,7 @@ height = 3 if problem == 1 else 10
 roomsOF = 20 if problem == 1 else 200
 maxAmount = 10 if problem == 1 else 50
 
-hotel = [[[] for _ in range(roomsOF+1)] for _ in range(height+1)]
+hotel = [[[] for _ in range(roomsOF + 1)] for _ in range(height + 1)]
 
 # Set the headers
 
@@ -47,25 +47,26 @@ Authorization = start_response['auth_key']
 
 headers = {'Content-Type': 'application/json', 'Authorization': Authorization}
 
-check_in_clients = [[] for _ in range(lastDay+1)]
-check_out_clients = [[] for _ in range(lastDay+1)]
+check_in_clients = [[] for _ in range(lastDay + 1)]
+check_out_clients = [[] for _ in range(lastDay + 1)]
+
 
 def clear(day):
     for client in check_out_clients[day]:
         floor = int(client['room_number'] / 1000)
         startingroom = client['room_number'] % 1000
-        for roomof in range(startingroom, startingroom+client['reservation_info']['amount']):
+        for roomof in range(startingroom, startingroom + client['reservation_info']['amount']):
             hotel[floor][roomof].remove(client['reservation_info'])
 
 
 def checkAvailability(reserverequest):
-    for floor in range(1, height+1):
+    for floor in range(1, height + 1):
         contiguous = 0
-        for roomOF in range(1, roomsOF+1):
+        for roomOF in range(1, roomsOF + 1):
             if checkAvailabilityForARoom(floor, roomOF, reserverequest):
                 contiguous += 1
                 if contiguous == reserverequest['amount']:
-                    return (floor * 1000) + roomOF-reserverequest['amount']+1
+                    return (floor * 1000) + roomOF - reserverequest['amount'] + 1
             else:
                 contiguous = 0
     return -1
@@ -80,9 +81,10 @@ def checkAvailabilityForARoom(floor, roomof, reserverequest):
     if hotel[floor][roomof][0]['check_in_date'] >= check_out_date:
         return True
     for idx in range(1, len(hotel[floor][roomof])):
-        if hotel[floor][roomof][idx-1]['check_out_date'] <= check_in_date and hotel[floor][roomof][idx]['check_in_date'] >= check_out_date:
+        if hotel[floor][roomof][idx - 1]['check_out_date'] <= check_in_date and hotel[floor][roomof][idx][
+            'check_in_date'] >= check_out_date:
             return True
-    if hotel[floor][roomof][len(hotel[floor][roomof])-1]['check_out_date'] <= check_in_date:
+    if hotel[floor][roomof][len(hotel[floor][roomof]) - 1]['check_out_date'] <= check_in_date:
         return True
     return False
 
@@ -95,7 +97,7 @@ def assignRooms(roomNumber, reservation_info):
     check_in_clients[check_in_date].append({'id': reservation_info['id'], 'room_number': roomNumber})
     check_out_clients[check_out_date].append({'room_number': roomNumber, 'reservation_info': reservation_info})
     for room in range(roomof, roomof + reservation_info['amount']):
-        assignARoom(floor, room, reservation_info, check_in_date, check_out_date) # room이 아닌 roomof였음
+        assignARoom(floor, room, reservation_info, check_in_date, check_out_date)  # room이 아닌 roomof였음
 
 
 def assignARoom(floor, roomof, reservation_info, check_in_date, check_out_date):
@@ -106,7 +108,8 @@ def assignARoom(floor, roomof, reservation_info, check_in_date, check_out_date):
         hotel[floor][roomof].insert(0, reservation_info)
         return
     for idx in range(1, len(hotel[floor][roomof])):
-        if hotel[floor][roomof][idx - 1]['check_out_date'] <= check_in_date and hotel[floor][roomof][idx]['check_in_date'] >= check_out_date:
+        if hotel[floor][roomof][idx - 1]['check_out_date'] <= check_in_date and hotel[floor][roomof][idx][
+            'check_in_date'] >= check_out_date:
             hotel[floor][roomof].insert(idx, reservation_info)
             return
     hotel[floor][roomof].append(reservation_info)
@@ -122,12 +125,11 @@ def simulate(room_assign):
         print(hello['fail_count'])
 
 
-
 def score():
     print(requests.get(base_url + 'score', headers=headers).text)
 
 
-for day in range(1, lastDay+1):
+for day in range(1, lastDay + 1):
     clear(day)
     print('day ' + str(day))
     reservRequests = requests.get(base_url + 'new_requests', headers=headers).json()['reservations_info']
