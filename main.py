@@ -13,7 +13,7 @@ data = {'key': 'value'}
 json_data = json.dumps(data)
 
 # auth_key
-X_Auth_Token = '5e9befb6a945932c4831bd1541c61fb6'
+X_Auth_Token = '88930f1f12822158e86001ea6e7b6313'
 
 Authorization = ''
 
@@ -50,6 +50,8 @@ headers = {'Content-Type': 'application/json', 'Authorization': Authorization}
 check_in_clients = [[] for _ in range(lastDay + 1)]
 check_out_clients = [[] for _ in range(lastDay + 1)]
 
+clients_to_assign = [[] for _ in range(lastDay + 1)]
+
 
 def clear(day):
     for client in check_out_clients[day]:
@@ -60,16 +62,24 @@ def clear(day):
 
 
 def checkAvailability(reserverequest):
+    # best fit
+    availables = []
     for floor in range(1, height + 1):
         contiguous = 0
         for roomOF in range(1, roomsOF + 1):
             if checkAvailabilityForARoom(floor, roomOF, reserverequest):
                 contiguous += 1
-                if contiguous == reserverequest['amount']:
-                    return (floor * 1000) + roomOF - reserverequest['amount'] + 1
             else:
+                if contiguous >= reserverequest['amount']:
+                    availables.append([(floor * 1000) + roomOF - contiguous, contiguous])
                 contiguous = 0
-    return -1
+        if contiguous >= reserverequest['amount']:
+            availables.append([(floor * 1000) + roomsOF - contiguous + 1, contiguous])
+    # 1 2 3 4
+    availables.sort(key=lambda a: a[1])
+    if len(availables) == 0:
+        return -1
+    return availables[0][0]
 
 
 # hotel = [[None for _ in range(3)] for _ in range(4)]
@@ -121,8 +131,6 @@ def reply(replies):
 
 def simulate(room_assign):
     hello = requests.put(base_url + 'simulate', headers=headers, data=room_assign).json()
-    if hello['fail_count'] > 0:
-        print(hello['fail_count'])
 
 
 def score():
@@ -131,17 +139,20 @@ def score():
 
 for day in range(1, lastDay + 1):
     clear(day)
-    print('day ' + str(day))
     reservRequests = requests.get(base_url + 'new_requests', headers=headers).json()['reservations_info']
     if len(reservRequests) > 0:
-        replies = []
         for reservRequest in reservRequests:
-            roomNumber = checkAvailability(reservRequest)  # either serve
+            clients_to_assign[min(reservRequest['check_in_date'] - 1, day + 14)].append(reservRequest)
+    if len(clients_to_assign[day]) > 0:
+        replies = []
+        clients_to_assign[day].sort(key=lambda obj: (-obj['amount'], (obj['check_out_date'] - obj['check_in_date'])))
+        for client_to_assign in clients_to_assign[day]:
+            roomNumber = checkAvailability(client_to_assign)  # either serve
             if roomNumber == -1:
-                replies.append({'id': reservRequest['id'], 'reply': 'refused'})
+                replies.append({'id': client_to_assign['id'], 'reply': 'refused'})
                 continue
-            assignRooms(roomNumber, reservRequest)
-            replies.append({'id': reservRequest['id'], 'reply': 'accepted'})
+            assignRooms(roomNumber, client_to_assign)
+            replies.append({'id': client_to_assign['id'], 'reply': 'accepted'})
         reply(replies)
     room_assign = []
     if len(check_in_clients[day]) != 0:
